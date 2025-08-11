@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Kladionice Tips - Tamna Tema</title>
+<style>
+  /* Tamna tema i osnovni stilovi */
+  body {
+    margin:0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+      Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    background:#121212; color:#eee;
+    min-height:100vh; display:flex; flex-direction:column;
+  }
+  header, footer {
+    background:#1e1e1e; padding:1rem 2rem;
+    text-align:center; font-weight:700; font-size:1.25rem;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.5);
+  }
+  main {
+    flex:1; max-width:800px; margin:1rem auto; padding:0 1rem;
+  }
+  a {
+    color:#0af; text-decoration:none;
+  }
+  a:hover {
+    text-decoration:underline;
+  }
+  nav a {
+    margin: 0 0.75rem; font-weight:600;
+  }
+  button {
+    background:#0af; border:none; color:#111; padding:0.5rem 1rem;
+    border-radius:4px; cursor:pointer; font-weight:600;
+  }
+  button:hover {
+    background:#08c;
+  }
+  input, textarea, select {
+    width:100%; padding:0.5rem; margin:0.25rem 0 1rem 0;
+    border-radius:4px; border:none; font-size:1rem;
+    background:#222; color:#eee;
+    box-sizing: border-box;
+  }
+  textarea {
+    resize: vertical;
+  }
+  .tip-card {
+    background:#222; padding:1rem; border-radius:6px;
+    margin-bottom:1rem; box-shadow:0 2px 6px rgba(0,0,0,0.7);
+  }
+  .tip-title {
+    font-weight:700; font-size:1.2rem; margin-bottom:0.25rem;
+  }
+  .tip-meta {
+    font-size:0.8rem; color:#bbb; margin-bottom:0.5rem;
+  }
+  .form-group {
+    margin-bottom:1rem;
+  }
+  .error-msg {
+    color:#f66; margin-bottom:1rem; font-weight:600;
+  }
+  /* Layout for navigation highlight */
+  .nav-active {
+    text-decoration: underline;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <nav>
+    <a href="#/" id="nav-home">Početna</a>
+    <a href="#/tips" id="nav-tips">Tipovi</a>
+    <a href="#/submit" id="nav-submit">Pošalji tip</a>
+    <a href="#/login" id="nav-login">Prijava</a>
+  </nav>
+</header>
+
+<main id="app">
+  <!-- Content se menja dinamički -->
+</main>
+
+<footer>
+  Odgovorno klađenje. Samo punoletni korisnici (18+).
+</footer>
+
+<script>
+(() => {
+  const app = document.getElementById('app');
+  let currentUser = JSON.parse(localStorage.getItem('kt_user') || 'null');
+  let tips = JSON.parse(localStorage.getItem('kt_tips') || '[]');
+  let users = JSON.parse(localStorage.getItem('kt_users') || '[]');
+
+  // Inicijalni primer tipova ako prazno
+  if (tips.length === 0) {
+    tips = [
+      {id:1, title:'Dinamo - Partizan 1X', sport:'Fudbal', odds:'1.85', content:'Očekujemo defanzivnu utakmicu. Manje od 2.5 gola.', author:'Admin', date:'2025-08-10'},
+      {id:2, title:'Zvezda, Total >2.5', sport:'Fudbal', odds:'2.10', content:'Napadački sastav, očekujemo više golova.', author:'Expert', date:'2025-08-09'}
+    ];
+    localStorage.setItem('kt_tips', JSON.stringify(tips));
+  }
+
+  // Helper da prikazujemo datum u lepšem formatu
+  function formatDate(d) {
+    const dt = new Date(d);
+    return dt.toLocaleDateString('sr-RS');
+  }
+
+  // Render navigacije i aktivnog linka
+  function setActiveNav(route) {
+    ['home','tips','submit','login'].forEach(id=>{
+      const el = document.getElementById('nav-'+id);
+      if(el) el.classList.remove('nav-active');
+    });
+    if(route==='/' || route==='') document.getElementById('nav-home').classList.add('nav-active');
+    else if(route.startsWith('/tips')) document.getElementById('nav-tips').classList.add('nav-active');
+    else if(route==='submit') document.getElementById('nav-submit').classList.add('nav-active');
+    else if(route==='login') document.getElementById('nav-login').classList.add('nav-active');
+  }
+
+  // Route handler
+  function router() {
+    const hash = location.hash.slice(1) || '/';
+    setActiveNav(hash);
+
+    if(hash==='/' || hash==='') renderHome();
+    else if(hash.startsWith('/tips/')) {
+      const id = hash.split('/')[2];
+      renderTipDetail(id);
+    }
+    else if(hash==='/tips') renderTipsList();
+    else if(hash==='submit') renderSubmitForm();
+    else if(hash==='login') renderLogin();
+    else renderNotFound();
+  }
+
+  // Render početne stranice
+  function renderHome() {
+    app.innerHTML = `
+      <h1>Dobrodošli na Kladionice Tips</h1>
+      <p>Brzi i jasni tipovi za klađenje, prijava korisnika i mogućnost slanja sopstvenih predloga.</p>
+      <p>PRIJAVI SE I OBEZBEDI SEBI PRIHOD OD 2000$ MESECNO.</p>
+      <section>
+        ${tips.slice(0,3).map(t=>`
+          <div class="tip-card">
+            <div class="tip-title">${t.title}</div>
+            <div class="tip-meta">${t.sport} — kvota ${t.odds} — ${formatDate(t.date)}</div>
+            <p>${t.content.length>100 ? t.content.slice(0,100)+'...' : t.content}</p>
+            <a href="#/tips/${t.id}">Detalji</a>
+          </div>
+        `).join('')}
+      </section>
+    `;
+  }
+
+  // Render lista svih tipova
+  function renderTipsList() {
+    app.innerHTML = `
+      <h1>Svi tipovi</h1>
+      <input type="text" id="search" placeholder="Pretraži tipove..." style="margin-bottom:1rem; padding:0.5rem; width:100%; border-radius:4px; border:none; background:#222; color:#eee;" />
+      <section id="tips-list">
+        ${tips.map(t=>`
+          <div class="tip-card">
+            <div class="tip-title">${t.title}</div>
+            <div class="tip-meta">${t.sport} — kvota ${t.odds} — ${formatDate(t.date)}</div>
+            <p>${t.content.length>140 ? t.content.slice(0,140)+'...' : t.content}</p>
+            <a href="#/tips/${t.id}">Detalji</a>
+          </div>
+        `).join('')}
+      </section>
+    `;
+
+    const searchInput = document.getElementById('search');
+    searchInput.addEventListener('input', () => {
+      const q = searchInput.value.toLowerCase();
+      const filtered = tips.filter(t =>
+        t.title.toLowerCase().includes(q) ||
+        t.content.toLowerCase().includes(q) ||
+        t.sport.toLowerCase().includes(q)
+      );
+      const tipsList = document.getElementById('tips-list');
+      if(filtered.length===0) tipsList.innerHTML = '<p>Nema rezultata.</p>';
+      else tipsList.innerHTML = filtered.map(t=>`
+        <div class="tip-card">
+          <div class="tip-title">${t.title}</div>
+          <div class="tip-meta">${t.sport} — kvota ${t.odds} — ${formatDate(t.date)}</div>
+          <p>${t.content.length>140 ? t.content.slice(0,140)+'...' : t.content}</p>
+          <a href="#/tips/${t.id}">Detalji</a>
+        </div>
+      `).join('');
+    });
+  }
+
+  // Render detalji tipa
+  function renderTipDetail(id) {
+    const tip = tips.find(t => String(t.id) === String(id));
+    if(!tip) {
+      app.innerHTML = `<p>Tip nije pronađen. <a href="#/tips">Nazad na tipove</a></p>`;
+      return;
+    }
+    app.innerHTML = `
+      <h1>${tip.title}</h1>
+      <div class="tip-meta">${tip.sport} — kvota ${tip.odds} — autor: ${tip.author} — ${formatDate(tip.date)}</div>
+      <p>${tip.content}</p>
+      <p><a href="#/submit?ref=${tip.id}">Prijavi se</a> | <a href="#/tips">Nazad na tipove</a></p>
+    `;
+  }
+
+  // Render forma za slanje tipa
+  function renderSubmitForm() {
+    if(!currentUser) {
+      app.innerHTML = `<p>Morate biti prijavljeni da pošaljete tip. <a href="#/login">Prijavite se ovde</a></p>`;
+      return;
+    }
+    app.innerHTML = `
+      <h1>Pošalji svoj tip</h1>
+      <form id="tipForm">
+        <div class="form-group">
+          <label>Naslov</label>
+          <input type="text" name="title" required />
+        </div>
+        <div class="form-group">
+          <label>Sport</label>
+          <input type="text" name="sport" required />
+        </div>
+        <div class="form-group">
+          <label>Kvota</label>
+          <input type="text" name="odds" />
+        </div>
+        <div class="form-group">
+          <label>Obrazloženje tipa</label>
+          <textarea name="content" rows="4" required></textarea>
+        </div>
+        <button type="submit">Pošalji</button>
+      </form>
+      <p><a href="#/">Početna</a></p>
+    `;
+
+    const form = document.getElementById('tipForm');
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      const data = new FormData(form);
+      const newTip = {
+        id: Date.now(),
+        title: data.get('title'),
+        sport: data.get('sport'),
+        odds: data.get('odds') || '-',
+        content: data.get('content'),
+        author: currentUser.email,
+        date: new Date().toISOString()
+      };
+      tips.unshift(newTip);
+      localStorage.setItem('kt_tips', JSON.stringify(tips));
+      alert('Tip je uspešno poslat!');
+      location.hash = '#/tips';
+    });
+  }
+
+  // Render prijava i registracija
+  function renderLogin() {
+    if(currentUser) {
+      app.innerHTML = `
+        <h1>Dobrodošli, ${currentUser.email}</h1>
+        <button id="logoutBtn">Odjavi se</button>
+      `;
+      document.getElementById('logoutBtn').onclick = () => {
+        currentUser = null;
+        localStorage.removeItem('kt_user');
+        location.hash = '#/login';
+      };
+      return;
+    }
+
+    app.innerHTML = `
+      <h1>Prijava / Registracija</h1>
+      <form id="authForm">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" name="email" required />
+        </div>
+        <div class="form-group">
+          <label>Lozinka</label>
+          <input type="password" name="password" required />
+        </div>
+        <button type="submit">Prijavi se</button>
+      </form>
+      <button id="registerBtn" style="margin-top: 1rem;">Registruj se</button>
+    `;
+
+    const authForm = document.getElementById('authForm');
+    authForm.addEventListener('submit', e => {
+      e.preventDefault();
+      const data = new FormData(authForm);
+      const email = data.get('email').toLowerCase();
+      const password = data.get('password');
+      const user = users.find(u => u.email === email && u.password === password);
+      if(user) {
+        currentUser = {email};
+        localStorage.setItem('kt_user', JSON.stringify(currentUser));
+        alert('Uspešno prijavljeni!');
+        location.hash = '#/';
+      } else {
+        alert('Pogrešan email ili lozinka.');
+      }
+    });
+
+    document.getElementById('registerBtn').onclick = () => {
+      const email = prompt('Unesite email za registraciju:');
+      if(!email) return alert('Email je obavezan!');
+      if(users.find(u => u.email === email.toLowerCase())) return alert('Korisnik već postoji!');
+      const password = prompt('Unesite lozinku:');
+      if(!password) return alert('Lozinka je obavezna!');
+      users.push({email: email.toLowerCase(), password});
+      localStorage.setItem('kt_users', JSON.stringify(users));
+      alert('Uspešno registrovani! Sada se prijavite.');
+    };
+  }
+
+  // Render 404
+  function renderNotFound() {
+    app.innerHTML = `<p>Stranica nije pronađena. <a href="#/">Idi na početnu</a></p>`;
+  }
+
+  window.addEventListener('hashchange', router);
+  router();
+})();
+</script>
+
+</body>
+</html>
